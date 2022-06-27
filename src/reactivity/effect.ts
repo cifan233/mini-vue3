@@ -5,7 +5,7 @@ class ReactiveEffect {
   }
   run(){
     activeEffect = this
-    this._fn()
+    return this._fn()
   }
 }
 
@@ -44,4 +44,7 @@ let activeEffect
 export function effect(fn){
   const _effect = new ReactiveEffect(fn)
   _effect.run()
+
+  //由于this指向问题此处需要bind
+  return _effect.run.bind(_effect)
 }
