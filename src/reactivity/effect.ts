@@ -1,7 +1,9 @@
 class ReactiveEffect {
-  private _fn
-  constructor(fn){
+  private _fn;
+  public scheduler;
+  constructor(fn,scheduler?){
     this._fn = fn
+    this.scheduler = scheduler
   }
   run(){
     activeEffect = this
@@ -36,13 +38,18 @@ export function trigger(target,key){
   const dep = depMap.get(key)
   //遍历执行已经收集的依赖
   for(const effect of dep){
-    effect.run()
+    if(effect.scheduler){
+      effect.scheduler() 
+    }else{
+      effect.run()
+    }
   }
 }
 
 let activeEffect
-export function effect(fn){
-  const _effect = new ReactiveEffect(fn)
+export function effect(fn,options:any = {}){
+  const { scheduler } = options
+  const _effect = new ReactiveEffect(fn,scheduler)
   _effect.run()
 
   //由于this指向问题此处需要bind
