@@ -1,7 +1,12 @@
+import { extend } from '../shared'
+
 class ReactiveEffect {
   private _fn;
-  public scheduler;
-  constructor(fn,scheduler?){
+  public scheduler?;
+  public onStop?:()=>void;
+  deps = []
+  activeStop = true
+  constructor(fn,scheduler){
     this._fn = fn
     this.scheduler = scheduler
   }
@@ -9,6 +14,24 @@ class ReactiveEffect {
     activeEffect = this
     return this._fn()
   }
+  stop(){
+    //优化：多次调用stop 只清空一次
+    if(this.activeStop){
+      cleanupEffect(this)
+      if(this.onStop){
+        this.onStop()
+      }
+      this.activeStop = false
+    }
+  }
+}
+
+//删除effect
+function cleanupEffect(effect){
+  effect.deps.forEach((dep:any)=>{
+    dep.delete(effect)
+  })
+  effect.deps.length = 0
 }
 
 //收集依赖 ，创建一个大的map对象保存 
@@ -29,7 +52,10 @@ export function track(target,key){
     depMap.set(key,dep)
   }
 
+  // 单纯触发reactive的get 没有使用effect时 activeEffect会是undefined 此处进行判断
+  if(!activeEffect) return
   dep.add(activeEffect)
+  activeEffect.deps.push(dep)
 }
 
 //触发对应的依赖
@@ -46,12 +72,24 @@ export function trigger(target,key){
   }
 }
 
+//调用stop时 把传入的effect从deps中删除
+export function stop(runner){
+  runner.effect.stop()
+}
+
 let activeEffect
 export function effect(fn,options:any = {}){
   const { scheduler } = options
+
   const _effect = new ReactiveEffect(fn,scheduler)
+  //extend 合并options
+  extend(_effect,options)
+
   _effect.run()
 
+  const runner:any = _effect.run.bind(_effect)
+  runner.effect = _effect
+  
   //由于this指向问题此处需要bind
-  return _effect.run.bind(_effect)
+  return runner 
 }
