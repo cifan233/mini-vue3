@@ -1,15 +1,15 @@
-import { effect,stop } from "../effect"
+import { effect, stop } from "../effect"
 import { reactive } from "../reactive"
 
-describe("effect",()=>{
-  it("happy path",()=>{
+describe("effect", () => {
+  it("happy path", () => {
     //init
     const user = reactive({
-      age:10
+      age: 10
     })
 
     let nextAge
-    effect(()=>{
+    effect(() => {
       nextAge = user.age + 1
     })
 
@@ -22,9 +22,9 @@ describe("effect",()=>{
 
 
   //effect(fn) 需要返回一个runner函数 调用runner函数后得到fn的返回值
-  it("should return runner when call effect",()=>{
+  it("should return runner when call effect", () => {
     let foo = 10
-    const runner = effect(()=>{
+    const runner = effect(() => {
       foo++
       return "foo"
     })
@@ -37,18 +37,18 @@ describe("effect",()=>{
   /***
    * 当给effect传入一个options，option的其中一个key是scheduler存在的时候，实现:
    * */
-  it('scheduler',()=>{
+  it('scheduler', () => {
     let dummy
     let run
-    const scheduler = jest.fn(()=>{
+    const scheduler = jest.fn(() => {
       run = runner
     })
 
-    const obj = reactive({foo:1})
-    const runner = effect(()=>{
+    const obj = reactive({ foo: 1 })
+    const runner = effect(() => {
       dummy = obj.foo
-    },{ scheduler })
-    
+    }, { scheduler })
+
     //scheduler一开始未被调用
     expect(scheduler).not.toHaveBeenCalled()
     //effect传入的函数照常触发
@@ -64,10 +64,10 @@ describe("effect",()=>{
 
   })
 
-  it('stop',()=>{
+  it('stop', () => {
     let dummy
-    const obj = reactive({prop:1})
-    const runner = effect(()=>{
+    const obj = reactive({ prop: 1 })
+    const runner = effect(() => {
       dummy = obj.prop
     })
 
@@ -77,7 +77,14 @@ describe("effect",()=>{
     stop(runner)
 
     //调用stop以后 不再响应式更新
-    obj.prop = 3
+    //obj.prop = 3
+
+    /**
+     * obj.prop = obj.prop+1 
+     * 和上面赋值的区别是 会触发get 就会触发track,导致stop失效，所以要阻止track
+     * */
+    obj.prop++
+
     expect(dummy).toBe(2)
 
     //调用stop的 effect手动调用runner 应仍然执行
@@ -85,9 +92,9 @@ describe("effect",()=>{
     expect(dummy).toBe(3)
   })
 
-  it("event:onStop",()=>{
+  it("event:onStop", () => {
     const onStop = jest.fn()
-    const runner = effect(()=>{},{onStop})
+    const runner = effect(() => { }, { onStop })
 
     stop(runner)
     expect(onStop).toHaveBeenCalled()
